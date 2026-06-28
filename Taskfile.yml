@@ -1,0 +1,35 @@
+version: '3'
+
+tasks:
+  pull:
+    desc: Pull raw data from WRDS Compustat Global
+    cmds:
+      - python code/01_pull_data.py
+
+  clean:
+    desc: Build the clean firm-year panel
+    deps: [pull]
+    cmds:
+      - python code/02_clean.py
+
+  descriptives:
+    desc: Build variables, summary statistics, and figures
+    deps: [clean]
+    cmds:
+      - python code/03_descriptives.py
+
+  regression:
+    desc: Estimate the three regression models
+    deps: [descriptives]
+    cmds:
+      - python code/04_regression.py
+
+  render:
+    desc: Render the research note to PDF
+    deps: [regression]
+    cmds:
+      - quarto render research_note.qmd
+
+  all:
+    desc: Run the full pipeline end to end
+    deps: [render]

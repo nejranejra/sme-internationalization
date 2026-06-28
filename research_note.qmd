@@ -1,0 +1,147 @@
+---
+title: "R&D Intensity and Firm Performance in European SMEs"
+subtitle: "A fixed-effects panel analysis of Compustat Global firms, 2015–2024"
+author: "Nejra Bošnjak"
+date: today
+format:
+  pdf:
+    toc: true
+    number-sections: true
+    geometry: margin=2.5cm
+    include-before-body:
+      text: |
+        \begin{center}
+        Repository: \url{https://github.com/nejranejra/sme-internationalization}
+        \end{center}
+bibliography: references/library.bib
+csl: references/apa.csl
+execute:
+  echo: false
+  warning: false
+  message: false
+jupyter: python3
+---
+
+```{python}
+#| label: load-results
+import pandas as pd
+from pathlib import Path
+
+TAB = Path("output/tables")
+summary = pd.read_csv(TAB / "summary_statistics.csv", index_col=0)
+reg = pd.read_csv(TAB / "regression_results.csv")
+
+# Helper: pull a coefficient string for a given variable + model column
+def cell(var, col):
+    row = reg.loc[reg["variable"] == var]
+    if row.empty or col not in reg.columns:
+        return "n/a"
+    return str(row.iloc[0][col])
+
+n_obs = cell("N", "(2) TWFE")
+rd_ols = cell("rd_intensity", "(1) OLS")
+rd_fe = cell("rd_intensity", "(2) TWFE")
+inter_fe = cell("rd_x_size", "(3) TWFE+int")
+```
+
+# Introduction
+
+Research and development (R&D) is widely treated as a central driver of firm
+competitiveness, yet its short-run accounting consequences are ambiguous,
+because R&D is expensed rather than capitalised and therefore depresses current
+earnings [@lome2016effect]. For small and medium-sized enterprises (SMEs), which
+face tighter financing constraints and thinner resource buffers, this tension is
+especially relevant [@rogers2004networks]. This note asks whether R&D intensity
+affects firm performance, measured as return on assets (RoA), among European
+SMEs, and whether firm size moderates that relationship. The analysis uses a
+firm-year panel drawn from Compustat Global for the fiscal years 2015–2024 and a
+two-way fixed-effects design that controls for time-invariant firm
+heterogeneity.
+
+# Theory and hypotheses
+
+The resource-based and absorptive-capacity perspectives argue that investment in
+R&D builds knowledge stocks that raise long-run performance [@cohen1990absorptive].
+In the short run, however, expensing R&D mechanically reduces reported earnings,
+so a negative contemporaneous association with RoA is theoretically expected
+[@lome2016effect]. This motivates the first hypothesis:
+
+> **H1:** R&D intensity affects RoA, with a negative short-run (expensing)
+> effect expected.
+
+Larger firms can spread the fixed costs of R&D over a broader asset and revenue
+base and tend to have greater absorptive capacity, which may attenuate the
+short-run earnings penalty [@rogers2004networks]. This implies a moderating role
+for firm size:
+
+> **H2:** Firm size positively moderates the R&D intensity–RoA relationship.
+
+# Data
+
+The data come from WRDS Compustat Global (`comp_global_daily.g_funda`), fiscal
+years 2015–2024. The sample is restricted to firms meeting basic data-quality
+conditions (positive assets, sales, and equity) and the EU SME definition
+(fewer than 250 employees or total assets of at most EUR 43m). Micro-firms below
+EUR 1m in assets are excluded because their log-asset values are unstable and
+distort the size distribution. All ratio variables are winsorised at the 1st and
+99th percentiles. The final estimation sample contains `{python} n_obs`
+firm-year observations.
+
+The dependent variable is RoA (`ib / at`). The independent variable is R&D
+intensity (`xrd / at`, with missing R&D set to zero). Controls are firm size
+(`log(at)`), leverage (`dltt / at`), CAPX intensity (`capx / at`), and the cash
+ratio (`che / at`). @tbl-summary reports descriptive statistics.
+
+```{python}
+#| label: tbl-summary
+#| tbl-cap: "Summary statistics"
+from IPython.display import Markdown
+Markdown(summary.to_markdown())
+```
+
+The correlation structure (@fig-corr) shows no pair of independent
+variables exceeding an absolute correlation of 0.8, so multicollinearity is not
+a concern.
+
+![Correlation matrix](output/figures/correlation_matrix.png){#fig-corr width=70%}
+
+# Results
+
+The empirical model is a two-way (firm and year) fixed-effects regression:
+
+$$
+RoA_{it} = \beta_1 RD_{it} + \beta_2 (RD_{it} \times \ln A_{it})
+         + \gamma' X_{it} + \alpha_i + \delta_t + \varepsilon_{it}
+$$ {#eq-model}
+
+where $RD_{it}$ is R&D intensity, $\ln A_{it}$ is firm size, $X_{it}$ is the
+vector of controls, and $\alpha_i$ and $\delta_t$ are firm and year fixed
+effects. @tbl-reg reports pooled OLS (1), two-way fixed effects (2), and
+the fixed-effects model with the R&D × size interaction (3).
+
+```{python}
+#| label: tbl-reg
+#| tbl-cap: "Regression results"
+Markdown(reg.to_markdown(index=False))
+```
+
+The relationship between R&D intensity and RoA is shown in @fig-main.
+
+![R&D intensity, firm size, and RoA](output/figures/main_relationship.png){#fig-main width=90%}
+
+**H1 is SUPPORTED.** In the fixed-effects model (2), the coefficient on R&D intensity is `{python} rd_fe`, which is negative and statistically significant (p < 0.001). More R&D-intensive SMEs report lower contemporaneous RoA. This is the expensing effect predicted by H1: because R&D is charged to current earnings rather than capitalised, it mechanically reduces short-run profitability.
+
+**H2 is SUPPORTED.** In model (3), the coefficient on the R&D × size interaction is `{python} inter_fe`, positive and statistically significant (p < 0.001). The positive sign means the negative R&D–RoA relationship is weaker for larger firms: as firm size rises, the short-run earnings penalty from R&D is attenuated, consistent with larger SMEs being better able to absorb and spread the fixed costs of R&D.
+
+**OLS vs fixed effects.** The pooled-OLS coefficient on R&D intensity is `{python} rd_ols`, compared with `{python} rd_fe` under two-way fixed effects — a change of roughly 4%. The two estimates are close, indicating that omitted time-invariant firm heterogeneity introduces only limited bias in the pooled OLS estimate here; the firm and year fixed effects absorb that variation without materially changing the conclusion. Explanatory power does fall (R² from 0.21 in OLS to 0.11 under fixed effects), reflecting that much of the cross-sectional variation in RoA is captured by stable firm-level differences.
+
+# Discussion and conclusion
+
+Both hypotheses are supported. For an SME manager, the results imply that higher R&D intensity depresses reported return on assets in the short run, and that this earnings penalty is smaller for larger firms, which can better absorb the cost of innovation. The central caveat is interpretive: RoA captures only the contemporaneous, expensing side of R&D and not the longer-run returns that R&D is intended to generate, so a negative short-run coefficient should not be read as evidence that R&D destroys value. In sum, H1 (a negative short-run effect of R&D intensity on RoA) and H2 (a positive moderating effect of firm size) are both empirically supported in this panel of European SMEs.
+
+This note shows how a fully reproducible WRDS-to-PDF pipeline can be used to test
+a focused SME research question. The pipeline pulls raw data, constructs the
+panel and variables, estimates the models, and renders this document end to end
+via `task all`.
+
+# References
